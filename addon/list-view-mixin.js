@@ -125,7 +125,6 @@ export default Ember.Mixin.create({
     this._super();
     this.width = this.width || 0;
     this._bin = this._setupBin();
-    this.on('didInsertElement', this._syncListContainerWidth);
     this.columnCountDidChange();
     this._syncChildViews();
     this._addContentArrayObserver();
@@ -343,6 +342,17 @@ export default Ember.Mixin.create({
 
   },
 
+  _doElementDimensionChange: function() {
+    // flush bin
+    this._bin.flush(0);
+
+    Ember.run.once(this, this._syncChildViews);
+  },
+
+  _elementDimensionDidChange: Ember.beforeObserver('elementWidth', 'rowHeight',function() {
+    this._doElementDimensionChange();
+  }),
+
   /**
     @private
 
@@ -354,18 +364,9 @@ export default Ember.Mixin.create({
   totalHeight: Ember.computed('content.length',
                               'width',
                               'rowHeight',
+                              'elementWidth',
                               'bottomPadding', function() {
     return this._bin.height(this.get('width')) + this.get('bottomPadding');
-  }),
-
-  _doRowHeightDidChange: function() {
-    // flush bin
-    this._bin.flush(0);
-    this._syncChildViews();
-  },
-
-  _rowHeightDidChange: Ember.observer('rowHeight', function() {
-    Ember.run.once(this, this._doRowHeightDidChange);
   }),
 
   /**
@@ -503,7 +504,7 @@ export default Ember.Mixin.create({
 
     if (arguments.length > 0) {
       // invoked by observer
-      Ember.run.schedule('afterRender', this, this._syncListContainerWidth);
+      // Ember.run.schedule('afterRender', this, this._syncListContainerWidth);
     }
   }, 'columnCount'),
 
@@ -553,10 +554,10 @@ export default Ember.Mixin.create({
     var width = get(this, 'width');
     // TODO: defer padding calculation to the bin
     var paddingCount = get(this, 'paddingCount');
-    var columnCount = get(this, 'columnCount');
+    //var columnCount = get(this, 'columnCount');
     var scrollTop = this.get('scrollTop');
 
-    var padding = (paddingCount * columnCount);
+    var padding = paddingCount;
 
     var numVisible = this._bin.numberVisibleWithin(scrollTop, width, height);
 
@@ -594,7 +595,7 @@ export default Ember.Mixin.create({
     calculatedStartingIndex  = this._bin.visibleStartingIndex(scrollTop, this.get('width'));
 
     var viewsNeededForViewport = this._numChildViewsForViewport();
-    var paddingCount = (1 * columnCount);
+    var paddingCount = this.get('paddingCount');//(1 * columnCount);
     var largestStartingIndex = max(contentLength - viewsNeededForViewport, 0);
 
     return min(calculatedStartingIndex, largestStartingIndex);
@@ -625,7 +626,7 @@ export default Ember.Mixin.create({
     @private
     @property {Function} needsSyncChildViews
   */
-  needsSyncChildViews: Ember.observer(syncChildViews, 'height', 'width', 'columnCount'),
+  needsSyncChildViews: Ember.observer(syncChildViews, 'height', 'width', 'rowHeight', 'elementWidth'),
 
   /**
     @private
@@ -732,27 +733,6 @@ export default Ember.Mixin.create({
 
     if (contentLength === 0 || contentLength === undefined) {
       addEmptyView.call(this);
-    }
-  },
-
-  /**
-    @private
-
-    Applies an inline width style to the list container.
-
-    @method _syncListContainerWidth
-   **/
-  _syncListContainerWidth: function() {
-    var elementWidth, columnCount, containerWidth, element;
-
-    elementWidth = get(this, 'elementWidth');
-    columnCount = get(this, 'columnCount');
-    containerWidth = elementWidth * columnCount;
-    element = this.$('.ember-list-container');
-
-    // needs to change, actually should be the known  upfront
-    if (containerWidth && element) {
-      element.css('width', containerWidth);
     }
   },
 
