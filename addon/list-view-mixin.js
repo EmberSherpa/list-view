@@ -632,11 +632,15 @@ export default Ember.Mixin.create({
         this._scrollTo(scrollTop);
         this.scrollTop = scrollTop;
       } else {
+        scrollTop = min(maxScrollTop, currentScrollTop);
+        this._scrollTo(scrollTop);
+        this.scrollTop = scrollTop;
         // scrollTop was NaN;
       }
 
       this._oldNumberOfViewsNeededForViewport = newNumber;
     }
+
   },
 
   _syncChildViews: function () {
