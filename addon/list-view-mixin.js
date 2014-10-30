@@ -109,7 +109,7 @@ export default Ember.Mixin.create({
     '_isFixed:ember-list-view-fixed'
   ],
   scrollTop: 0,
-  bottomPadding: 0, // TODO: maybe this can go away
+  bottomPadding: 0,
   _lastEndingIndex: 0,
 
   isShelf: false,
