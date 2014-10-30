@@ -100,17 +100,25 @@ function enableProfilingOutput() {
   @namespace Ember
 */
 export default Ember.Mixin.create({
-  itemViewClass: ReusableListItemView,
   emptyViewClass: Ember.View,
   classNames: ['ember-list-view'],
   attributeBindings: ['style'],
-  classNameBindings: ['_isGrid:ember-list-view-grid:ember-list-view-list'],
+  classNameBindings: [
+    '_isGrid:ember-list-view-grid:ember-list-view-list',
+    '_isShelf:ember-list-view-shelf',
+    '_isFixed:ember-list-view-fixed'
+  ],
   scrollTop: 0,
   bottomPadding: 0, // TODO: maybe this can go away
   _lastEndingIndex: 0,
   paddingCount: 1,
 
-  _isGrid: Ember.computed.gt('columnCount', 1).readOnly(),
+  isShelf: false,
+  isFixed: false,
+
+  _isGrid: Ember.computed(function() {
+    return this._bin.isGrid(this.get('width'));
+  }).readOnly(),
 
   /**
     @private
@@ -138,6 +146,7 @@ export default Ember.Mixin.create({
   },
 
   _setupShelfFirstBin: function() {
+    set(this, '_isShelf', true);
     // detect which bin we need
     var bin = new Bin.ShelfFirst([], this.get('width'), 0);
     var list = this;
@@ -162,6 +171,7 @@ export default Ember.Mixin.create({
   },
 
   _setupFixedGridBin: function() {
+    set(this, '_isFixed', true);
     // detect which bin we need
     var bin = new Bin.FixedGrid([], 0, 0);
     var list = this;
@@ -344,6 +354,7 @@ export default Ember.Mixin.create({
   _doElementDimensionChange: function() {
     // flush bin
     this._bin.flush(0);
+    Ember.propertyDidChange(this, 'isGrid');
     Ember.run.once(this, this._syncChildViews);
   },
 
@@ -753,6 +764,7 @@ export default Ember.Mixin.create({
     state = this._state || this.state;
 
     this._bin.flush(start);
+    Ember.propertyDidChange(this, 'isGrid');
     var length = this.get('content.length');
 
     if (state === 'inDOM') {
