@@ -15,5 +15,6 @@
     "qunit": "~1.17.1",
     "ember-test-helpers": "~0.3.4",
     "ember-template-compiler": "http://builds.emberjs.com/tags/v1.11.1/ember-template-compiler.js"
+    "pack": "git://github.com/stefanpenner/pack.git"
   }
 }
