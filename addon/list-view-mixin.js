@@ -34,10 +34,10 @@ function integer(key, value) {
     } else {
       ret = value;
     }
-    this[key] = ret;
+    this.set(`_${key}`, ret);
     return ret;
   } else {
-    return this[key];
+    return this.get(`_${key}`);
   }
 }
 
@@ -139,6 +139,8 @@ export default Ember.Mixin.create({
     return this._bin.isGrid(this.get('width'));
   }).readOnly(),
 
+  _width: 0,
+
   /**
     @private
 
@@ -150,7 +152,6 @@ export default Ember.Mixin.create({
   */
   init: function() {
     this._super();
-    this.width = this.width || 0;
     this._bin = this._setupBin();
     this._syncChildViews();
     this._addContentArrayObserver();
