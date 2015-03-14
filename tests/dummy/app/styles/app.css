@@ -228,3 +228,26 @@ form li {
 .grid-grouped .grid-item {
   height: 100px;
 }
+
+.multi-dimension-grid .ember-list-item-view {
+  position: absolute;
+  border: 1px solid black;
+}
+
+.multi-dimension-grid .row {
+  position: absolute;
+}
+
+.multi-dimension-grid .dog {
+  height: 50px;
+  width:  300px;
+  display: block;
+  background-color: teal;
+}
+
+.multi-dimension-grid .cat {
+  height: 150px;
+  width: 150px;
+  display: block;
+  background-color: pink;
+}

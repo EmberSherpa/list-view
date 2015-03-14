@@ -1,3 +1,4 @@
+import Ember from 'ember';
 import {data1, data2} from '../utils/fixtures';
 
 var toggler = true;

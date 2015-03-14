@@ -1,3 +1,4 @@
+import Ember from 'ember';
 import ListView from 'list-view/list-view';
 import ListItemView from 'list-view/list-item-view';
 
