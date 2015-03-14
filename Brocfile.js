@@ -20,6 +20,7 @@ var app = new EmberAddon();
 app.import('bower_components/ember-template-compiler/index.js');
 app.import('vendor/zynga-scroller/Animate.js');
 app.import('vendor/zynga-scroller/Scroller.js');
+app.import('vendor/pack.js');
 app.import('vendor/ember-test-helpers.amd.js', {
   exports: {
     'ember-test-helpers': [

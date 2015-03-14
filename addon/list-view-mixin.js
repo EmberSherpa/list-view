@@ -3,6 +3,8 @@
 import Ember from 'ember';
 import ReusableListItemView from './reusable-list-item-view';
 
+var Bin = window.Bin;
+
 var get = Ember.get, set = Ember.set,
   min = Math.min, max = Math.max, floor = Math.floor,
   ceil = Math.ceil,
@@ -117,6 +119,7 @@ function enableProfilingOutput() {
 */
 export default Ember.Mixin.create({
   emptyViewClass: Ember.View,
+
   classNames: ['ember-list-view'],
   attributeBindings: ['style'],
   classNameBindings: [
