@@ -1,0 +1,55 @@
+<div class="default">
+    <form class="configuration">
+        <ul>
+            <li><h3>Configuration</h3></li>
+            <li>
+                <label>
+                    <div class="description">Height:</div>
+                  {{input type='range' min=50 max=1000 value=height}}
+                  {{input type="number" value=height}}
+                </label>
+            </li>
+            <li>
+                <label>
+                    <div class="description">Width:</div>
+                  {{input type='range' min=50 max=1000 value=width}}
+                  {{input type="number" value=width}}
+                </label>
+            </li>
+            <li>
+                <label>
+                    <div class="description">RowHeight:</div>
+                  {{input type='range' min=50 max=500 value=rowHeight}}
+                  {{input type="number" value=rowHeight}}
+                </label>
+            </li>
+            <li>
+                <label>
+                    <div class="description">ElementWidth:</div>
+                  {{input type='range' min=50 max=width value=elementWidth}}
+                  {{input type="number" value=elementWidth}}
+                </label>
+            </li>
+            <li>
+                <label>
+                    <div class="description">Items:</div>
+                  {{input type='range' min=0 max=maxItemCount value=itemCount}}
+                  {{input type="number" value=itemCount}}
+                </label>
+            </li>
+            <li>
+                <button {{action 'changeData'}}>Change Data</button>
+            </li>
+        </ul>
+    </form>
+  <h3>Table</h3>
+  {{#collection 'list-view'
+  content=items
+  height=height
+  width=width
+  elementWidth=elementWidth
+  rowHeight=rowHeight
+  }}
+    {{name}}
+  {{/collection}}
+</div>
