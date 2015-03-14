@@ -32,3 +32,29 @@ export var types = [
   {id: 31, type: "cat",   name: "Quincy"},
   {id: 32, type: "dog",   name: "Roger"},
   ];
+
+export var data1 = [
+  { height: 100,                  name: "Andrew"   },
+  { height: 100,                  name: "Xbar"     },
+  { height:  25, width: Infinity, name: "Caroline" },
+  { height: 100,                  name: "David"    },
+  { height: 100,                  name: "Xbar"     },
+  { height: 100,                  name: "Xbar"     },
+  { height:  25, width: Infinity, name: "Caroline" },
+  { height:  25, width: Infinity, name: "Caroline" },
+  { height: 100,                  name: "Edward"   },
+  { height:  25, width: Infinity, name: "Caroline" }
+];
+
+export var data2 = [
+  { height:  25, width: Infinity, name: "Caroline" },
+  { height: 100,                  name: "Andrew"   },
+  { height:  25, width: Infinity, name: "Caroline" },
+  { height:  25, width: Infinity, name: "Caroline" },
+  { height: 100,                  name: "Xbar"     },
+  { height: 100,                  name: "David"    },
+  { height: 100,                  name: "Xbar"     },
+  { height: 100,                  name: "Xbar"     },
+  { height: 100,                  name: "Edward"   },
+  { height:  25, width: Infinity, name: "Caroline" }
+];

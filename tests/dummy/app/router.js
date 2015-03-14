@@ -6,6 +6,7 @@ var Router = Ember.Router.extend({
 });
 
 Router.map(function() {
+  this.route('grid-grouped');
   this.route('simple');
   this.route('mobile');
   this.route('mobile-large-images');

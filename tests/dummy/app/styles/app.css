@@ -211,3 +211,20 @@ form li {
 .virtual .ember-list-container {
   -webkit-transform: translate3d(0px, 0px, 0);
 }
+
+.grid-grouped .ember-list-item-view {
+  position: absolute;
+  border: 1px solid gray;
+  width: 100px;
+}
+.grid-grouped .row {
+  position: absolute;
+}
+.grid-grouped .grid-group {
+  height: 25px;
+  background: gray;
+  width: 100%;
+}
+.grid-grouped .grid-item {
+  height: 100px;
+}
