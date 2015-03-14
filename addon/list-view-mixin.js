@@ -34,10 +34,10 @@ function integer(key, value) {
     } else {
       ret = value;
     }
-    this.set(`_${key}`, ret);
+    Ember.meta(this).cache[key] = ret;
     return ret;
   } else {
-    return this.get(`_${key}`);
+    return Ember.meta(this).cache[key];
   }
 }
 
@@ -118,8 +118,8 @@ function enableProfilingOutput() {
   @namespace Ember
 */
 export default Ember.Mixin.create({
+  itemViewClass: ReusableListItemView,
   emptyViewClass: Ember.View,
-
   classNames: ['ember-list-view'],
   attributeBindings: ['style'],
   classNameBindings: [
@@ -139,8 +139,6 @@ export default Ember.Mixin.create({
     return this._bin.isGrid(this.get('width'));
   }).readOnly(),
 
-  _width: 0,
-
   /**
     @private
 
@@ -152,6 +150,7 @@ export default Ember.Mixin.create({
   */
   init: function() {
     this._super();
+    this.set('width', this.get('width') || 0);
     this._bin = this._setupBin();
     this._syncChildViews();
     this._addContentArrayObserver();
@@ -233,17 +232,13 @@ export default Ember.Mixin.create({
     var element          = buffer.element();
     var dom              = buffer.dom;
     var container        = dom.createElement('div');
+
     container.className  = 'ember-list-container';
     element.appendChild(container);
 
     this._childViewsMorph = dom.appendMorph(container, container, null);
 
     return container;
-  },
-
-  createChildViewsMorph: function (element) {
-    this._childViewsMorph = this._renderer._dom.createMorph(element.lastChild, element.lastChild, null);
-    return element;
   },
 
   height: Ember.computed(integer),

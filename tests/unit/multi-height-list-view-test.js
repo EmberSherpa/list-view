@@ -7,7 +7,7 @@ import ListView from 'ember-list-view';
 import ListItemView from 'ember-list-view/list-item-view';
 import ReusableListItemView from 'ember-list-view/reusable-list-item-view';
 
-moduleForView('list-view', 'multi-height', {});
+moduleForView('list-view', 'unit/multi-height-list-view-test.js - multi-height', {});
 
 test("Correct height based on content", function(assert) {
   var content = [
@@ -76,7 +76,7 @@ test("Correct height based on content", function(assert) {
   assert.equal(view.get('totalHeight'), 3350);
 
   var positionSorted = sortElementsByPosition(this.$('.ember-list-item-view'));
-  assert.equal(this.$('.ember-list-item-view').length, 4 /** 5 in pack */);
+  assert.equal(this.$('.ember-list-item-view').length, 5);
 
   var i, contentIdx;
 
@@ -90,9 +90,7 @@ test("Correct height based on content", function(assert) {
     { x:0, y:  100 }, // <-- in view
     { x:0, y:  200 }, // <-- in view
     { x:0, y:  350 },  // <-- buffer
-    /* in pack branch
-    { x: 0, y:  400 }, // <-- buffer
-    */
+    { x: 0, y:  400 } // <-- buffer
   ], 'went beyond scroll max via overscroll');
 
   Ember.run(view, 'scrollTo', 1000);
@@ -108,9 +106,7 @@ test("Correct height based on content", function(assert) {
     { x:0, y: 1100 }, // <-- in view
     { x:0, y: 1150 }, // <-- in view
     { x:0, y: 1250 }, // <-- partially in view
-    /* in pack
     { x:0, y: 1400 }  // <-- partially in view
-    */
   ], 'went beyond scroll max via overscroll');
 });
 
@@ -185,7 +181,7 @@ test("Correct height based on view", function(assert) {
   assert.equal(view.get('totalHeight'), 3350);
 
   var positionSorted = sortElementsByPosition(this.$('.ember-list-item-view'));
-  assert.equal(this.$('.ember-list-item-view').length, 4 /* 5 in pack */);
+  assert.equal(this.$('.ember-list-item-view').length, 5);
 
   var i, contentIdx;
 
@@ -199,9 +195,7 @@ test("Correct height based on view", function(assert) {
     { x:0, y:  100 }, // <-- in view
     { x:0, y:  200 }, // <-- in view
     { x:0, y:  350 }, // <-- buffer
-    /* in pack
     { x:0, y:  400 }  // <-- buffer
-    */
   ], 'went beyond scroll max via overscroll');
 
   Ember.run(view, 'scrollTo', 1000);
@@ -217,9 +211,7 @@ test("Correct height based on view", function(assert) {
     { x:0, y: 1100 }, // <-- in view
     { x:0, y: 1150 }, // <-- in view
     { x:0, y: 1250 }, // <-- partially in view
-    /* in pack
     { x:0, y: 1400 }  // <-- partially in view
-    */
   ], 'went beyond scroll max via overscroll');
 });
 
@@ -291,7 +283,7 @@ test("_numChildViewsForViewport + _startingIndex with multi-height", function(as
 
   this.render();
 
-  assert.equal(view._numChildViewsForViewport(), 4, 'expected _numChildViewsForViewport to be correct (before scroll)');
+  assert.equal(view._numChildViewsForViewport(), 5, 'expected _numChildViewsForViewport to be correct (before scroll)');
   assert.equal(view._startingIndex(), 0, 'expected _startingIndex to be correct (before scroll)');
 
   // entries: 1, 3, 4, 5
@@ -302,50 +294,6 @@ test("_numChildViewsForViewport + _startingIndex with multi-height", function(as
 
   assert.equal(view._numChildViewsForViewport(), 5, 'expected _numChildViewsForViewport to be correct (after scroll)');
   assert.equal(view._startingIndex(), 10, 'expected _startingIndex to be correct (after scroll)');
-});
-
-test("_cachedHeights is unique per instance", function(assert) {
-  var content = [ ];
-
-  var ParentClass = ListView.extend({
-    content: Ember.A(content),
-    height: 300,
-    width: 500,
-    rowHeight: 100,
-    itemViews: {
-      other: ListItemView.extend({
-        rowHeight: 150,
-        template: compile("Potato says {{name}} expected: other === {{type}} {{id}}")
-      })
-    },
-    itemViewForIndex: function(idx){
-      return this.itemViews[Ember.get(Ember.A(this.get('content')).objectAt(idx), 'type')];
-    },
-    heightForIndex: function(idx) {
-      // proto() is a quick hack, lets just store this on the class..
-      return this.itemViewForIndex(idx).proto().rowHeight;
-    }
-  });
-
-  var viewA, viewB;
-  Ember.run(function(){
-    viewA = ParentClass.create();
-    viewB = ParentClass.create();
-  });
-
-  assert.deepEqual(viewA._cachedHeights, viewB._cachedHeights);
-
-  viewA._cachedHeights.push(1);
-
-  Ember.run(view, 'scrollTo', 1000);
-
-  // entries: 12, 13, 14, 15
-
-  assert.equal(view._numChildViewsForViewport(), 4, 'expected _numChildViewsForViewport to be correct (after scroll)');
-  assert.equal(view._startingIndex(), 10, 'expected _startingIndex to be correct (after scroll)');
-
-  assert.equal(viewA._cachedHeights.length, 2);
-  assert.equal(viewB._cachedHeights.length, 1, 'expected no addition cached heights, cache should not be shared between instances');
 });
 
 test("handle bindable rowHeight with multi-height (only fallback case)", function(assert) {

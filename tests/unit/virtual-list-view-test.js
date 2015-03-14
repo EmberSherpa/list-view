@@ -9,7 +9,7 @@ import ReusableListItemView from 'ember-list-view/reusable-list-item-view';
 
 var setDimensionsCalled = 0, view, scrollingDidCompleteCount, didInitializeScrollerCount, scrollerDimensionsDidChangeCount;
 
-moduleForView('virtual-list', 'Acceptance', {
+moduleForView('virtual-list', 'unit/virtual-list-test.js - acceptance', {
   setup: function() {
     window.Scroller = function(callback, opts){
       this.callback = callback;
@@ -92,7 +92,7 @@ test("should update dimensions of scroller when totalHeight changes", function(a
   assert.equal(setDimensionsCalled, 1, "setDimensions was called on the scroller");
 });
 
-moduleForView('virtual-list', 'Acceptance', {
+moduleForView('virtual-list', 'unit/virtual-list-test.js - acceptance', {
   setup: function() {
     scrollerDimensionsDidChangeCount = 0;
     scrollingDidCompleteCount = 0;
@@ -344,21 +344,21 @@ test("height and width change after with scroll – simple", function(assert){
   // x x x --|
   // x o o --|- viewport
 
-  assert.equal(this.$('.ember-list-item-view').length, 9, "after width + height change: the correct number of rows were rendered");
+  assert.equal(this.$('.ember-list-item-view').length, 4, "after width + height change: the correct number of rows were rendered");
   assert.deepEqual(itemPositions(view), [
-    /*              */  { x:  50, y:   0 }, { x: 100, y:   0 },
-    { x:   0, y:  50 }, { x:  50, y:  50 }, { x: 100, y:  50 },
+    // /*              */  { x:  50, y:   0 }, { x: 100, y:   0 },
+    // { x:   0, y:  50 }, { x:  50, y:  50 }, { x: 100, y:  50 },
     { x:   0, y: 100 }, { x:  50, y: 100 }, { x: 100, y: 100 },
     { x:   0, y: 150 }], "after width + height change: The rows are in the correct positions");
 
   var sortedElements = sortElementsByPosition(this.$('.ember-list-item-view'));
   var texts = Ember.$.map(sortedElements, function(el){ return Ember.$(el).text(); });
   assert.deepEqual(texts, [
-    'A:Item 2B:Item 2',
-    'A:Item 3B:Item 3',
-    'A:Item 4B:Item 4',
-    'A:Item 5B:Item 5',
-    'A:Item 6B:Item 6',
+    // 'A:Item 2B:Item 2',
+    // 'A:Item 3B:Item 3',
+    // 'A:Item 4B:Item 4',
+    // 'A:Item 5B:Item 5',
+    // 'A:Item 6B:Item 6',
     'A:Item 7B:Item 7',
     'A:Item 8B:Item 8',
     'A:Item 9B:Item 9',
@@ -440,10 +440,9 @@ test("height and width change after with scroll – 1x2 -> 2x2 with 5 items", fu
   // x x --|
   // x o --|- viewport
   // o
-  assert.equal(this.$('.ember-list-item-view').length, 5, "after width + height change: the correct number of rows were rendered");
+  assert.equal(this.$('.ember-list-item-view').length, 3, "after width + height change: the correct number of rows were rendered");
 
   assert.deepEqual(itemPositions(view), [
-    { x: 0, y:   0 }, { x: 50, y:   0 },
     { x: 0, y:  50 }, { x: 50, y:  50 },
     { x: 0, y: 100 }
   ], "The rows are in the correct positions");
@@ -451,7 +450,6 @@ test("height and width change after with scroll – 1x2 -> 2x2 with 5 items", fu
   var sortedElements = sortElementsByPosition(this.$('.ember-list-item-view'));
   var texts = Ember.$.map(sortedElements, function(el){ return Ember.$(el).text(); });
   assert.deepEqual(texts, [
-    'A:Item 1B:Item 1', 'A:Item 2B:Item 2',
     'A:Item 3B:Item 3', 'A:Item 4B:Item 4',
     'A:Item 5B:Item 5'
   ], 'elements should be rendered in expected position');
@@ -802,7 +800,7 @@ test("Creating a VirtualListView without height and rowHeight properties should 
 
       this.render();
     },
-    /A ListView must be created with a height and a rowHeight./, "Throws exception.");
+    /Invalid rowHeight: `undefined`/, "Throws exception.");
 });
 
 

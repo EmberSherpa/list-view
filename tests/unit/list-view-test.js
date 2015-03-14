@@ -1123,7 +1123,7 @@ test("handle bindable rowHeight", function(assert) {
 
 var scrollYChanged, reuseChildren;
 
-moduleForView("list-view", "acceptance", {
+moduleForView("list-view", "unit/list-view-test.js - acceptance", {
   setup: function() {
     scrollYChanged = 0;
     reuseChildren = 0;
@@ -1167,7 +1167,7 @@ test("should trigger scrollYChanged correctly", function (assert) {
   assert.equal(scrollYChanged, 1, 'scrollYChanged should not fire for same value');
 });
 
-moduleForView("list-view", "acceptance", {
+moduleForView("list-view", "unit/list-view-test.js - acceptance", {
   setup: function() {
     scrollYChanged = 0;
     reuseChildren = 0;

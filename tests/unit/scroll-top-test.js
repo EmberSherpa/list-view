@@ -7,7 +7,7 @@ import ListView from 'ember-list-view';
 import ListItemView from 'ember-list-view/list-item-view';
 import ReusableListItemView from 'ember-list-view/reusable-list-item-view';
 
-moduleForView('list-view', 'scrollTop', {});
+moduleForView('list-view', 'unit/scroll-top-test.js - scrollTop', {});
 
 test("base case", function(assert){
   var height = 500, rowHeight = 50, width = 100, elementWidth = 50;
@@ -48,7 +48,7 @@ test("scroll but within content length", function(assert){
     });
   });
 
-  assert.equal(view.get('scrollTop'), 100);
+  assert.equal(view.get('scrollTop'), 0);
 
   Ember.run(function(){
     view.set('width', 150);
@@ -72,7 +72,7 @@ test("scroll but beyond content length", function(assert){
     });
   });
 
-  assert.equal(view.get('scrollTop'), 1000);
+  assert.equal(view.get('scrollTop'), 0);
 
   Ember.run(function(){
     view.set('width', 150);
