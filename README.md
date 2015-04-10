@@ -92,10 +92,10 @@ export default ListView.extend({
 });
 ```
 
-Use the `{{view}}` helper in your template.
+Use the `{{collection}}` helper in your template.
 
 ```handlebars
-{{view 'my-list' items=model}}
+{{collection 'my-list' items=model}}
 ```
 
 Create a **my-list-item.hbs** in your project's **/templates** directory.
