@@ -6,9 +6,9 @@ import ReusableListItemView from './reusable-list-item-view';
 var Bin = window.Bin;
 
 var get = Ember.get, set = Ember.set,
-  min = Math.min, max = Math.max, floor = Math.floor,
-  ceil = Math.ceil,
-  forEach = Ember.EnumerableUtils.forEach;
+    min = Math.min, max = Math.max, floor = Math.floor,
+    ceil = Math.ceil,
+    forEach = Ember.EnumerableUtils.forEach;
 
 function DimensionError(name, dimension) {
   Error.call(this);
@@ -38,81 +38,55 @@ function integer(key, value) {
     cache[key] = ret;
     Ember.meta(this).cache = cache;
     return ret;
-  }
-  return Ember.meta(this).cache[key];
-}
-
-function addContentArrayObserver() {
-  var content = get(this, 'content');
-  if (content) {
-    content.addArrayObserver(this);
+  } else {
+    return Ember.meta(this).cache[key];
   }
 }
 
-function removeAndDestroy(object) {
-  this.removeObject(object);
-  object.destroy();
+function typeKey(type) {
+  if (typeof type === 'string') {
+    return type;
+  }
+  return Ember.guidFor(type);
 }
 
-function syncChildViews() {
-  Ember.run.once(this, '_syncChildViews');
+function contentKey(content) {
+  if (typeof content.id === 'string' || typeof content.id === 'number') {
+    return content.id;
+  }
+  return Ember.guidFor(content);
 }
 
-function sortByContentIndex (viewOne, viewTwo) {
-  return get(viewOne, 'contentIndex') - get(viewTwo, 'contentIndex');
+function ViewEntry(key, content, type, index, position) {
+  this.key = key;
+  this.content = content;
+  this.type = type;
+  this.index = index;
+  this.position = position;
+
+  this.typeKey = typeKey(type);
+  this.view = null;
 }
 
-function removeEmptyView() {
-  var emptyView = get(this, 'emptyView');
-  if (emptyView && emptyView instanceof Ember.View) {
-    emptyView.removeFromParent();
-    if (this.totalHeightDidChange !== undefined) {
-        this.totalHeightDidChange();
+ViewEntry.prototype = {
+  updatePosition: function (index, position) {
+    if (this.position.x !== position.x ||
+        this.position.y !== position.y) {
+      this.position = position;
+      this.view.updatePosition(position);
     }
+    if (this.index !== index) {
+      this.index = index;
+      this.view.set('contentIndex', index);
+    }
+  },
+  updateView: function (view) {
+    this.view = view;
+    view.set('contentIndex', this.index);
+    view.updatePosition(this.position);
+    view.updateContext(this.content);
   }
-}
-
-function addEmptyView() {
-  var emptyView = get(this, 'emptyView');
-
-  if (!emptyView) {
-    return;
-  }
-
-  if ('string' === typeof emptyView) {
-    emptyView = get(emptyView) || emptyView;
-  }
-
-  emptyView = this.createChildView(emptyView);
-  set(this, 'emptyView', emptyView);
-
-  if (Ember.CoreView.detect(emptyView)) {
-    this._createdEmptyView = emptyView;
-  }
-
-  this.unshiftObject(emptyView);
-}
-
-function enableProfilingOutput() {
-  function before(name, time/*, payload*/) {
-    console.time(name);
-  }
-
-  function after (name, time/*, payload*/) {
-    console.timeEnd(name);
-  }
-
-  if (Ember.ENABLE_PROFILING) {
-    Ember.subscribe('view._scrollContentTo', {
-      before: before,
-      after: after
-    });
-    Ember.subscribe('view.updateContext', {
-      before: before,
-      after: after
-    });
-  }
-}
+};
 
 /**
   @class Ember.ListViewMixin
@@ -128,17 +102,42 @@ export default Ember.Mixin.create({
     '_isShelf:ember-list-view-shelf',
     '_isFixed:ember-list-view-fixed'
   ],
+
+  _isFixed: false,
+  _isShelf: false,
+  _isGrid: false,
+
   scrollTop: 0,
-  bottomPadding: 0,
-  _lastEndingIndex: 0,
+  totalHeight: 0,
 
-  isShelf: false,
-  isFixed: false,
 
-  // TODO: this needs to be invalidated when content changes.
-  _isGrid: Ember.computed('width', function() {
-    return this._bin.isGrid(this.get('width'));
-  }).readOnly(),
+  /**
+    @public
+
+    Returns a view class for the provided contentIndex. If the view is
+    different then the one currently present it will remove the existing view
+    and replace it with an instance of the class provided
+
+    @param {Number} contentIndex item index in the content array
+    @method _addItemView
+    @returns {Ember.View} ember view class for this index
+  */
+  itemViewForIndex: function(contentIndex) {
+    return get(this, 'itemViewClass');
+  },
+
+  /**
+    @public
+
+    Returns a view class for the provided contentIndex. If the view is
+    different then the one currently present it will remove the existing view
+    and replace it with an instance of the class provided
+
+    @param {Number} contentIndex item index in the content array
+    @method _addItemView
+    @returns {Ember.View} ember view class for this index
+  */
+  heightForIndex: null,
 
   /**
     @private
@@ -151,11 +150,203 @@ export default Ember.Mixin.create({
   */
   init: function() {
     this._super();
-    this.set('width', this.get('width') || 0);
+    this._contentDirty = false;
+    this._needsContentLayout = false;
+    this._needsViewportLayout = false;
+    this._needsRowsUpdate = true;
+
+    this._width = 0;
+    this._height = 0;
+    this._elementWidth = undefined;
+    this._rowHeight = undefined;
+    this._totalHeight = 0;
+    this._contentLength = 0;
+
+    // represents the current rendering
+    this._startingIndex = 0;
+    this._numberVisible = 0;
+    this._viewPools = {};
+    this._viewMap = {};
+    this._views = [];
+
     this._bin = this._setupBin();
-    this._syncChildViews();
-    this._addContentArrayObserver();
+
+    this.setContentDirty();
+    this.setNeedsViewportLayout();
   },
+
+  dequeueView: function (typeKey, type) {
+    var viewPool = this._viewPools[typeKey];
+    if (!viewPool) {
+      this._viewPools[typeKey] = viewPool = {
+        views: []
+      };
+    }
+    var childView;
+    if (viewPool.views.length) {
+      childView = viewPool.views.pop();
+      childView.set('isVisible', true);
+    } else {
+      childView = this.createChildView(type);
+      this.pushObject(childView);
+    }
+    return childView;
+  },
+
+  enqueueView: function (typeKey, childView) {
+    this._viewPools[typeKey].views.push(childView);
+    childView.set('isVisible', false);
+    childView.updateContext(null);
+  },
+
+  setNeedsViewportLayout: Ember.observer('height', function () {
+    if (!this._needsViewportLayout) {
+      this._needsViewportLayout = true;
+      Ember.run.schedule('render', this, this.layoutIfNeeded);
+    }
+  }),
+
+  setContentDirty: Ember.observer('content.[]', function () {
+    this._contentDirty = true;
+    this.setNeedsContentLayout();
+  }),
+
+  setNeedsContentLayout: Ember.observer('width', 'elementWidth', 'rowHeight', function () {
+    if (!this._needsContentLayout) {
+      this._needsContentLayout = true;
+      this._bin.flush(0);
+      Ember.run.schedule('render', this, this.layoutIfNeeded);
+    }
+  }),
+
+  scrollToItem: function (item) {
+    this.layoutIfNeeded();
+    var index = this.get('content').indexOf(item);
+    if (index >= 0) {
+      var pos = this._bin.position(index, this._width);
+      this.scrollTo(pos.y);
+    }
+  },
+
+  // determines our content layout
+  layoutIfNeeded: function () {
+    if (this._needsContentLayout) {
+      this._needsContentLayout = false;
+      var width = this.get('width') || 0;
+      if (width !== this._width) {
+        this._contentDirty = true;
+        this._width = width;
+      }
+      var elementWidth = this.get('elementWidth');
+      if (elementWidth !== this._elementWidth) {
+        this._contentDirty = true;
+        this._elementWidth = elementWidth;
+      }
+      var rowHeight = this.get('rowHeight');
+      if (rowHeight !== this._rowHeight) {
+        this._contentDirty = true;
+        this._rowHeight = rowHeight;
+      }
+
+      if (this._contentDirty) {
+        this._contentDirty = false;
+        this._needsRowsUpdate = true;
+        this._contentLength = this.get('content.length');
+        this._totalHeight = this._bin.height(this._width);
+
+        // needs to be done on dIE
+        this._updateScrollableHeight(this._totalHeight);
+
+        // updates classNameBinding
+        this.set('_isGrid', this._bin.isGrid(this._width));
+      }
+    }
+
+    if (this._needsViewportLayout) {
+      this._needsViewportLayout = false;
+      var height = this.get('height') || 0;
+      if (height !== this._height) {
+        if (height > this._height) {
+          this._needsRowsUpdate = true;
+        }
+        this._height = height;
+      }
+
+      var maxScrollTop = max(0, this._totalHeight - this._height);
+      if (maxScrollTop !== this._maxScrollTop) {
+        this._maxScrollTop = maxScrollTop;
+
+        if (this.scrollTop > this._maxScrollTop) {
+          this.scrollTop = this._scrollTo(this._maxScrollTop);
+        }
+      }
+    }
+
+    this.updateRowsIfNeeded();
+  },
+
+  _scrollContentTo: function(y) {
+    if (this.scrollTop !== y) {
+      this.scrollTop = y;
+      this._needsRowsUpdate = true;
+      this.updateRowsIfNeeded();
+    }
+  },
+
+  updateRowsIfNeeded: function () {
+    if (!this._needsRowsUpdate) {
+      return;
+    }
+    this._needsRowsUpdate = false;
+    var numberVisible = this._bin.numberVisibleWithin(this.scrollTop, this._width, this._height, true);
+    var startingIndex = this._bin.visibleStartingIndex(this.scrollTop, this._width);
+
+    var entry;
+    var views = [];
+    var viewMap = {};
+    var priorViewMap = this._viewMap;
+
+    for (var i=startingIndex, l=startingIndex+numberVisible; i<l; i++) {
+      var content = this.get('content').objectAt(i);
+      var position = this._bin.position(i, this._width);
+      var key = contentKey(content);
+      entry = priorViewMap[key];
+      if (entry) {
+        entry.updatePosition(i, position);
+        viewMap[key] = entry;
+        views.push(entry);
+      } else {
+        var type = this.itemViewForIndex(i);
+        entry = new ViewEntry(key, content, type, i, position);
+        viewMap[key] = entry;
+        views.push(entry);
+      }
+    }
+
+    var priorViews = this._views;
+    for (i=0, l=priorViews.length; i<l; i++) {
+      entry = priorViews[i];
+      if (viewMap[entry.key]) {
+        continue;
+      }
+      this.enqueueView(entry.typeKey, entry.view);
+    }
+
+    for (i=0, l=views.length; i<l; i++) {
+      entry = views[i];
+      if (entry.view) {
+        continue;
+      }
+      entry.updateView( this.dequeueView(entry.typeKey, entry.type) );
+    }
+
+    this._viewMap = viewMap;
+    this._views = views;
+    this._numberVisible = numberVisible;
+    this._startingIndex = startingIndex;
+  },
+
+  _updateScrollableHeight: Ember.K,
 
   _setupBin: function() {
     if (this.heightForIndex) {
@@ -168,11 +359,11 @@ export default Ember.Mixin.create({
   _setupShelfFirstBin: function() {
     set(this, '_isShelf', true);
     // detect which bin we need
-    var bin = new Bin.ShelfFirst([], this.get('width'), 0);
+    var bin = new Bin.ShelfFirst([], 0, 0);
     var list = this;
 
     bin.length = function() {
-      return list.get('content.length');
+      return list._contentLength;
     };
 
     bin.widthAtIndex = function(index) {
@@ -201,7 +392,7 @@ export default Ember.Mixin.create({
     };
 
     bin.widthAtIndex = function() {
-      var ret = list.get('elementWidth');
+      var ret = list._elementWidth;
       if (ret === undefined) {
          return ret;
       }
@@ -209,15 +400,15 @@ export default Ember.Mixin.create({
     };
 
     bin.heightAtIndex = function() {
-      return validateDimension('rowHeight', list.get('rowHeight'));
+      return validateDimension('rowHeight', list._rowHeight);
     };
 
     return bin;
   },
 
-  _addContentArrayObserver: Ember.beforeObserver(function() {
-    addContentArrayObserver.call(this);
-  }, 'content'),
+  // _addContentArrayObserver: Ember.beforeObserver(function() {
+  //   addContentArrayObserver.call(this);
+  // }, 'content'),
 
   /**
     Called on your view when it should push strings of HTML into a
@@ -308,501 +499,8 @@ export default Ember.Mixin.create({
   */
   _scrollTo: Ember.K,
 
-  /**
-    @private
-    @method _scrollContentTo
-  */
-  _scrollContentTo: function(y) {
-    var startingIndex, endingIndex,
-        contentIndex, visibleEndingIndex, maxContentIndex,
-        contentIndexEnd, contentLength, scrollTop, content;
-
-    scrollTop = max(0, y);
-
-    if (this.scrollTop === scrollTop) {
-      return;
-    }
-
-    // allow a visual overscroll, but don't scroll the content. As we are doing needless
-    // recycyling, and adding unexpected nodes to the DOM.
-    var maxScrollTop = max(0, get(this, 'totalHeight') - get(this, 'height'));
-    scrollTop = min(scrollTop, maxScrollTop);
-
-    content = get(this, 'content');
-    contentLength = get(content, 'length');
-    this.scrollTop = scrollTop;
-    startingIndex = this._startingIndex(contentLength);
-
-    Ember.instrument('view._scrollContentTo', {
-      scrollTop: scrollTop,
-      content: content,
-      startingIndex: startingIndex,
-      endingIndex: min(max(contentLength - 1, 0), startingIndex + this._numChildViewsForViewport())
-    }, function () {
-      maxContentIndex = max(contentLength - 1, 0);
-
-      startingIndex = this._startingIndex();
-      visibleEndingIndex = startingIndex + this._numChildViewsForViewport();
-
-      endingIndex = min(maxContentIndex, visibleEndingIndex);
-
-      if (startingIndex === this._lastStartingIndex &&
-          endingIndex === this._lastEndingIndex) {
-
-        this.trigger('scrollYChanged', y);
-        return;
-      } else {
-
-        Ember.run(this, function() {
-          this._reuseChildren();
-
-          this._lastStartingIndex = startingIndex;
-          this._lastEndingIndex = endingIndex;
-          this.trigger('scrollYChanged', y);
-        });
-      }
-    }, this);
-
-  },
-
-  _doElementDimensionChange: function() {
-    // flush bin
-    this._bin.flush(0);
-    Ember.propertyDidChange(this, 'isGrid');
-    Ember.run.once(this, this._syncChildViews);
-  },
-
-  _elementDimensionDidChange: Ember.beforeObserver('elementWidth', 'rowHeight', 'width', 'height', function() {
-    this._doElementDimensionChange();
-  }),
-
-  /**
-    @private
-
-    Computes the height for a `Ember.ListView` scrollable container div.
-    You must specify `rowHeight` parameter for the height to be computed properly.
-
-    @property {Ember.ComputedProperty} totalHeight
-  */
-  totalHeight: Ember.computed('content.length',
-                              'width',
-                              'rowHeight',
-                              'elementWidth',
-                              'bottomPadding', function() {
-    return this._bin.height(this.get('width')) + this.get('bottomPadding');
-  }),
-
-  /**
-    @private
-    @method _prepareChildForReuse
-  */
-  _prepareChildForReuse: function(childView) {
-    childView.prepareForReuse();
-  },
-
   createChildView: function (_view) {
     return this._super(_view, this._itemViewProps || {});
-  },
-
-  /**
-    @private
-    @method _reuseChildForContentIndex
-  */
-  _reuseChildForContentIndex: function(childView, contentIndex) {
-    var content, context, newContext, childsCurrentContentIndex, position, enableProfiling, oldChildView;
-
-    var contentViewClass = this.itemViewForIndex(contentIndex);
-
-    if (childView.constructor !== contentViewClass) {
-      // rather then associative arrays, lets move childView + contentEntry maping to a Map
-      var i = this._childViews.indexOf(childView);
-      childView.destroy();
-      childView = this.createChildView(contentViewClass);
-      this.insertAt(i, childView);
-    }
-
-    content         = get(this, 'content');
-    enableProfiling = get(this, 'enableProfiling');
-    position        = this.positionForIndex(contentIndex);
-    childView.updatePosition(position);
-
-    set(childView, 'contentIndex', contentIndex);
-
-    if (enableProfiling) {
-      Ember.instrument('view._reuseChildForContentIndex', position, function() {
-
-      }, this);
-    }
-
-    newContext = content.objectAt(contentIndex);
-    childView.updateContext(newContext);
-  },
-
-  /**
-    @private
-    @method positionForIndex
-  */
-  positionForIndex: function(index) {
-    if (this.get('content.length') === 0) {
-      // TODO: Hack, to handle clearing the array. Actually the views should
-      // just be removed
-      return {
-        x: 0,
-        y: 0
-      };
-    }
-    return this._bin.position(index, this.get('width'));
-  },
-
-  /**
-    @private
-    @method _childViewCount
-  */
-  _childViewCount: function() {
-    var contentLength, childViewCountForHeight;
-
-    contentLength = get(this, 'content.length');
-    childViewCountForHeight = this._numChildViewsForViewport();
-
-    return min(contentLength, childViewCountForHeight);
-  },
-
-  /**
-    @private
-
-    Computes max possible scrollTop value given the visible viewport
-    and scrollable container div height.
-
-    @property {Ember.ComputedProperty} maxScrollTop
-  */
-  maxScrollTop: Ember.computed('height', 'totalHeight', function(){
-    var totalHeight, viewportHeight;
-
-    totalHeight = get(this, 'totalHeight');
-    viewportHeight = get(this, 'height');
-
-    return max(0, totalHeight - viewportHeight);
-  }),
-
-  /**
-    @private
-
-    Determines whether the emptyView is the current childView.
-
-    @method _isChildEmptyView
-  */
-  _isChildEmptyView: function() {
-    var emptyView = get(this, 'emptyView');
-
-    return emptyView && emptyView instanceof Ember.View &&
-           this._childViews.length === 1 && this._childViews.indexOf(emptyView) === 0;
-  },
-
-  /**
-    @private
-
-    Computes the number of views that would fit in the viewport area.
-    You must specify `height` and `rowHeight` parameters for the number of
-    views to be computed properly.
-
-    @method _numChildViewsForViewport
-  */
-
-  _numChildViewsForViewport:  function() {
-    var height = get(this, 'height');
-    var width = get(this, 'width');
-    // TODO: defer padding calculation to the bin
-    var scrollTop = this.get('scrollTop');
-
-    var numVisible = this._bin.numberVisibleWithin(scrollTop, width, height, true);
-
-    return numVisible;
-  },
-
-  /**
-    @private
-
-    Computes the starting index of the item views array.
-    Takes `scrollTop` property of the element into account.
-
-    Is used in `_syncChildViews`.
-
-    @method _startingIndex
-  */
-  _startingIndex: function(_contentLength) {
-    var scrollTop, rowHeight, calculatedStartingIndex,
-        contentLength;
-
-    if (_contentLength === undefined) {
-      contentLength = get(this, 'content.length');
-    } else {
-      contentLength = _contentLength;
-    }
-
-    scrollTop = this.scrollTop;
-    rowHeight = get(this, 'rowHeight');
-
-    calculatedStartingIndex  = this._bin.visibleStartingIndex(scrollTop, this.get('width'));
-
-    var viewsNeededForViewport = this._numChildViewsForViewport();
-    var largestStartingIndex = max(contentLength - viewsNeededForViewport, 0);
-
-    return min(calculatedStartingIndex, largestStartingIndex);
-  },
-
-  /**
-    @private
-    @event contentWillChange
-  */
-  contentWillChange: Ember.beforeObserver(function() {
-    var content = get(this, 'content');
-
-    if (content) {
-      content.removeArrayObserver(this);
-    }
-  }, 'content'),
-
-  /**),
-    @private
-    @event contentDidChange
-  */
-  contentDidChange: Ember.observer(function() {
-    this._bin.flush(0);
-    addContentArrayObserver.call(this);
-    syncChildViews.call(this);
-  }, 'content'),
-
-  /**
-    @private
-    @property {Function} needsSyncChildViews
-  */
-  needsSyncChildViews: Ember.observer(syncChildViews, 'height', 'width', 'rowHeight', 'elementWidth'),
-
-  /**
-    @private
-
-    Returns a new item view. Takes `contentIndex` to set the context
-    of the returned view properly.
-
-    @param {Number} contentIndex item index in the content array
-    @method _addItemView
-  */
-  _addItemView: function (contentIndex) {
-    var itemViewClass, childView;
-
-    itemViewClass = this.itemViewForIndex(contentIndex);
-    childView = this.createChildView(itemViewClass);
-    this.pushObject(childView);
-  },
-
-  /**
-    @public
-
-    Returns a view class for the provided contentIndex. If the view is
-    different then the one currently present it will remove the existing view
-    and replace it with an instance of the class provided
-
-    @param {Number} contentIndex item index in the content array
-    @method _addItemView
-    @returns {Ember.View} ember view class for this index
-  */
-  itemViewForIndex: function(contentIndex) {
-    return get(this, 'itemViewClass');
-  },
-
-  /**
-    @public
-
-    Returns a view class for the provided contentIndex. If the view is
-    different then the one currently present it will remove the existing view
-    and replace it with an instance of the class provided
-
-    @param {Number} contentIndex item index in the content array
-    @method _addItemView
-    @returns {Ember.View} ember view class for this index
-  */
-  heightForIndex: null,
-
-  /**
-   @private
-   */
-  _syncScrollTop: function() {
-    var newNumber = this._numChildViewsForViewport();
-    var oldNumber = this._oldNumberOfViewsNeededForViewport;
-
-    if (oldNumber !== newNumber) {
-      var maxScrollTop = get(this, 'maxScrollTop');
-      var currentScrollTop = this.scrollTop;
-      var scrollTop = min(maxScrollTop, currentScrollTop * oldNumber/newNumber);
-
-      if (scrollTop === scrollTop) {
-        this._scrollTo(scrollTop);
-        this.scrollTop = scrollTop;
-      } else {
-        scrollTop = min(maxScrollTop, currentScrollTop);
-        this._scrollTo(scrollTop);
-        this.scrollTop = scrollTop;
-        // scrollTop was NaN;
-      }
-
-      this._oldNumberOfViewsNeededForViewport = newNumber;
-    }
-
-  },
-
-  /**
-   @private
-
-   Intelligently manages the number of childviews.
-
-   @method _syncChildViews
-   **/
-  _syncChildViews: function(){
-    var childViews, childViewCount,
-        numberOfChildViews, numberOfChildViewsNeeded,
-        contentIndex, startingIndex, endingIndex,
-        contentLength, emptyView, count, delta;
-
-    if (this.isDestroyed || this.isDestroying) {
-      return;
-    }
-
-    this._syncScrollTop();
-
-    contentLength = get(this, 'content.length');
-    emptyView = get(this, 'emptyView');
-
-    childViewCount = this._childViewCount();
-    childViews = this.positionOrderedChildViews();
-
-    if (this._isChildEmptyView()) {
-      removeEmptyView.call(this);
-    }
-
-    startingIndex = this._startingIndex();
-    endingIndex = startingIndex + childViewCount;
-
-    numberOfChildViewsNeeded = childViewCount;
-    numberOfChildViews = childViews.length;
-
-    delta = numberOfChildViewsNeeded - numberOfChildViews;
-
-    if (delta === 0) {
-      // no change
-    } else if (delta > 0) {
-      // more views are needed
-      contentIndex = this._lastEndingIndex;
-
-      for (count = 0; count < delta; count++, contentIndex++) {
-        this._addItemView(contentIndex);
-      }
-    } else {
-      // less views are needed
-      forEach(
-        childViews.splice(numberOfChildViewsNeeded, numberOfChildViews),
-        removeAndDestroy,
-        this
-      );
-    }
-
-    this._reuseChildren();
-
-    this._lastStartingIndex = startingIndex;
-    this._lastEndingIndex   = this._lastEndingIndex + delta;
-
-    if (contentLength === 0 || contentLength === undefined) {
-      addEmptyView.call(this);
-    }
-  },
-
-  /**
-    @private
-    @method _reuseChildren
-  */
-  _reuseChildren: function(){
-    var contentLength, childViews, childViewsLength,
-        startingIndex, endingIndex, childView, attrs,
-        contentIndex, visibleEndingIndex, maxContentIndex,
-        contentIndexEnd, scrollTop;
-
-    scrollTop          = this.scrollTop;
-    contentLength      = get(this, 'content.length');
-    maxContentIndex    = max(contentLength - 1, 0);
-    childViews         = this.getReusableChildViews();
-    childViewsLength   =  childViews.length;
-
-    startingIndex      = this._startingIndex();
-    visibleEndingIndex = startingIndex + this._numChildViewsForViewport();
-
-    endingIndex        = min(maxContentIndex, visibleEndingIndex);
-
-    contentIndexEnd    = min(visibleEndingIndex, startingIndex + childViewsLength);
-
-    for (contentIndex = startingIndex; contentIndex < contentIndexEnd; contentIndex++) {
-      childView = childViews[contentIndex % childViewsLength];
-      this._reuseChildForContentIndex(childView, contentIndex);
-    }
-  },
-
-  /**
-    @private
-    @method getReusableChildViews
-  */
-  getReusableChildViews: function() {
-    return this._childViews;
-  },
-
-  /**
-    @private
-    @method positionOrderedChildViews
-  */
-  positionOrderedChildViews: function() {
-    return this.getReusableChildViews().sort(sortByContentIndex);
-  },
-
-  arrayWillChange: Ember.K,
-
-  /**
-    @private
-    @event arrayDidChange
-  */
-  // TODO: refactor
-  arrayDidChange: function(content, start, removedCount, addedCount) {
-    var index, contentIndex, state;
-
-    if (this._isChildEmptyView()) {
-      removeEmptyView.call(this);
-    }
-
-    // Support old and new Ember versions
-    state = this._state || this.state;
-
-    this._bin.flush(start);
-    Ember.propertyDidChange(this, 'isGrid');
-    var length = this.get('content.length');
-
-    if (state === 'inDOM') {
-      // ignore if all changes are out of the visible change
-      if (start >= this._lastStartingIndex || start < this._lastEndingIndex) {
-        index = 0;
-        // ignore all changes not in the visible range
-        // this can re-position many, rather then causing a cascade of re-renders
-        forEach(
-          this.positionOrderedChildViews(),
-          function(childView) {
-            contentIndex = this._lastStartingIndex + index;
-            if (contentIndex < length) {
-              // TODO: i would prefer to prune children before this.
-              this._reuseChildForContentIndex(childView, contentIndex);
-            }
-            index++;
-          },
-          this
-        );
-      }
-
-      syncChildViews.call(this);
-    }
   },
 
   destroy: function () {

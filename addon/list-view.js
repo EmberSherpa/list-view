@@ -2,8 +2,6 @@ import Ember from 'ember';
 import ListViewHelper from './list-view-helper';
 import ListViewMixin from './list-view-mixin';
 
-var get = Ember.get;
-
 /**
   The `Ember.ListView` view class renders a
   [div](https://developer.mozilla.org/en/HTML/Element/div) HTML element,
@@ -114,54 +112,38 @@ export default Ember.ContainerView.extend(ListViewMixin, {
 
   _scrollTo: function(scrollTop) {
     var element = this.element;
-
-    if (element) { element.scrollTop = scrollTop; }
+    if (element) {
+      element.scrollTop = scrollTop;
+      return element.scrollTop;
+    }
+    return scrollTop;
   },
 
   didInsertElement: function() {
-    var that = this;
-
-    this._updateScrollableHeight();
-
-    this._scroll = function(e) { that.scroll(e); };
-
+    this._scroll = Ember.run.bind(this, this.scroll);
     Ember.$(this.element).on('scroll', this._scroll);
+    this.layoutIfNeeded();
+    this._updateScrollableHeight(this._totalHeight);
+    this.scrollTop = this._scrollTo(this.scrollTop);
   },
 
   willDestroyElement: function() {
     Ember.$(this.element).off('scroll', this._scroll);
   },
 
-  scroll: function(e) {
-    this.scrollTo(e.target.scrollTop);
+  scroll: function () {
+    if (this.element) {
+      this._scrollContentTo(this.element.scrollTop);
+    }
   },
 
   scrollTo: function(y) {
     this._scrollTo(y);
-    this._scrollContentTo(y);
   },
 
-  totalHeightDidChange: Ember.observer(function () {
-    Ember.run.scheduleOnce('afterRender', this, this._updateScrollableHeight);
-  }, 'totalHeight'),
-
-  _updateScrollableHeight: function () {
-    var height, state;
-
-    // Support old and new Ember versions
-    state = this._state || this.state;
-
-    if (state === 'inDOM') {
-      // if the list is currently displaying the emptyView, remove the height
-      if (this._isChildEmptyView()) {
-          height = '';
-      } else {
-          height = get(this, 'totalHeight');
-      }
-
-      this.$('.ember-list-container').css({
-        height: height
-      });
+  _updateScrollableHeight: function (height) {
+    if (this.element) {
+      this.$('.ember-list-container').height(height);
     }
   }
 });

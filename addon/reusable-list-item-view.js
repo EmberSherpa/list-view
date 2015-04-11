@@ -13,10 +13,6 @@ export default Ember.View.extend(ListItemViewMixin, {
     this._proxyContext = context;
   },
 
-  isVisible: Ember.computed('context.content', function () {
-    return !!this.get('context.content');
-  }),
-
   updateContext: function (newContext) {
     var context = get(this._proxyContext, 'content');
 
