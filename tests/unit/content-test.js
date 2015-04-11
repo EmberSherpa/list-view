@@ -62,7 +62,7 @@ test("replacing the list content", function(assert) {
     view.set('content', Ember.A([{name: 'The only item'}]));
   });
 
-  assert.equal(this.$('.ember-list-item-view').length, 1, "The rendered list was updated");
+  assert.equal(this.$('.ember-list-item-view:visible').length, 1, "The rendered list was updated");
   assert.equal(this.$('.ember-list-container').height(), 50, "The scrollable view has the correct height");
 });
 
@@ -148,7 +148,7 @@ test("clearing the content", function(assert) {
     content.clear();
   });
 
-  var positionSorted = sortElementsByPosition(this.$('.ember-list-item-view'));
+  var positionSorted = sortElementsByPosition(this.$('.ember-list-item-view:visible'));
   assert.equal(positionSorted.length, 0, "The list should not contain any elements");
 });
 
