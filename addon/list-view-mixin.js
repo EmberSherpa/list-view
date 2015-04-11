@@ -27,6 +27,7 @@ function validateDimension(name, dimension) {
 }
 
 function integer(key, value) {
+  var cache = Ember.meta(this).cache || {};
   if (arguments.length > 1) {
     var ret;
     if (typeof value === 'string') {
@@ -34,11 +35,11 @@ function integer(key, value) {
     } else {
       ret = value;
     }
-    Ember.meta(this).cache[key] = ret;
+    cache[key] = ret;
+    Ember.meta(this).cache = cache;
     return ret;
-  } else {
-    return Ember.meta(this).cache[key];
   }
+  return Ember.meta(this).cache[key];
 }
 
 function addContentArrayObserver() {
