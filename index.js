@@ -1,13 +1,15 @@
 /* jshint node: true */
 'use strict';
 
+var path = require('path');
+
 module.exports = {
   name: 'ember-list-view',
   treeForVendor: function() {
     var trees = ['vendor'];
 
-    var pack = new this.Funnel('bower_components', {
-      srcDir: '/pack',
+    var pack = new this.Funnel(path.join('node_modules', 'layout-bin-packer'), {
+      srcDir: '/',
       files: ['index.js'],
       destDir: '/',
       getDestinationPath: function(relativePath) {

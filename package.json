@@ -42,5 +42,8 @@
   ],
   "ember-addon": {
     "configPath": "tests/dummy/config"
+  },
+  "dependencies": {
+    "layout-bin-packer": "^1.0.0"
   }
 }
