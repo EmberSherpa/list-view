@@ -3,90 +3,10 @@
 import Ember from 'ember';
 import ReusableListItemView from './reusable-list-item-view';
 
-var Bin = window.Bin;
-
 var get = Ember.get, set = Ember.set,
-    min = Math.min, max = Math.max, floor = Math.floor,
-    ceil = Math.ceil,
-    forEach = Ember.EnumerableUtils.forEach;
-
-function DimensionError(name, dimension) {
-  Error.call(this);
-  this.message = "Invalid " + name + ": `" +  dimension+ "`";
-  this.dimension = dimension;
-}
-
-DimensionError.prototype = Object.create(Error.prototype);
-
-function validateDimension(name, dimension) {
-  if (dimension <= 0 || typeof dimension !== 'number' || dimension !== dimension) {
-    throw new DimensionError(name, dimension);
-  }
-
-  return dimension;
-}
-
-function integer(key, value) {
-  var cache = Ember.meta(this).cache || {};
-  if (arguments.length > 1) {
-    var ret;
-    if (typeof value === 'string') {
-      ret = parseInt(value, 10);
-    } else {
-      ret = value;
-    }
-    cache[key] = ret;
-    Ember.meta(this).cache = cache;
-    return ret;
-  } else {
-    return Ember.meta(this).cache[key];
-  }
-}
-
-function typeKey(type) {
-  if (typeof type === 'string') {
-    return type;
-  }
-  return Ember.guidFor(type);
-}
-
-function contentKey(content) {
-  if (typeof content.id === 'string' || typeof content.id === 'number') {
-    return content.id;
-  }
-  return Ember.guidFor(content);
-}
-
-function ViewEntry(key, content, type, index, position) {
-  this.key = key;
-  this.content = content;
-  this.type = type;
-  this.index = index;
-  this.position = position;
-
-  this.typeKey = typeKey(type);
-  this.view = null;
-}
-
-ViewEntry.prototype = {
-  updatePosition: function (index, position) {
-    if (this.position.x !== position.x ||
-        this.position.y !== position.y) {
-      this.position = position;
-      this.view.updatePosition(position);
-    }
-    if (this.index !== index) {
-      this.index = index;
-      this.view.set('contentIndex', index);
-    }
-  },
-  updateView: function (view) {
-    this.view = view;
-    view.set('contentIndex', this.index);
-    view.updatePosition(this.position);
-    view.updateContext(this.content);
-  }
-};
+    min = Math.min, max = Math.max,
+    forEach = Ember.EnumerableUtils.forEach,
+    Bin = window.Bin;
 
 /**
   @class Ember.ListViewMixin
@@ -406,10 +326,6 @@ export default Ember.Mixin.create({
     return bin;
   },
 
-  // _addContentArrayObserver: Ember.beforeObserver(function() {
-  //   addContentArrayObserver.call(this);
-  // }, 'content'),
-
   /**
     Called on your view when it should push strings of HTML into a
     `Ember.RenderBuffer`.
@@ -515,3 +431,82 @@ export default Ember.Mixin.create({
     return this;
   }
 });
+
+
+function DimensionError(name, dimension) {
+  Error.call(this);
+  this.message = "Invalid " + name + ": `" +  dimension+ "`";
+  this.dimension = dimension;
+}
+
+DimensionError.prototype = Object.create(Error.prototype);
+
+function validateDimension(name, dimension) {
+  if (dimension <= 0 || typeof dimension !== 'number' || dimension !== dimension) {
+    throw new DimensionError(name, dimension);
+  }
+
+  return dimension;
+}
+
+function integer(key, value) {
+  var cache = Ember.meta(this).cache || {};
+  if (arguments.length > 1) {
+    var ret;
+    if (typeof value === 'string') {
+      ret = parseInt(value, 10);
+    } else {
+      ret = value;
+    }
+    cache[key] = ret;
+    Ember.meta(this).cache = cache;
+    return ret;
+  } else {
+    return Ember.meta(this).cache[key];
+  }
+}
+
+function typeKey(type) {
+  if (typeof type === 'string') {
+    return type;
+  }
+  return Ember.guidFor(type);
+}
+
+function contentKey(content) {
+  if (typeof content.id === 'string' || typeof content.id === 'number') {
+    return content.id;
+  }
+  return Ember.guidFor(content);
+}
+
+function ViewEntry(key, content, type, index, position) {
+  this.key = key;
+  this.content = content;
+  this.type = type;
+  this.index = index;
+  this.position = position;
+
+  this.typeKey = typeKey(type);
+  this.view = null;
+}
+
+ViewEntry.prototype = {
+  updatePosition: function (index, position) {
+    if (this.position.x !== position.x ||
+      this.position.y !== position.y) {
+      this.position = position;
+      this.view.updatePosition(position);
+    }
+    if (this.index !== index) {
+      this.index = index;
+      this.view.set('contentIndex', index);
+    }
+  },
+  updateView: function (view) {
+    this.view = view;
+    view.set('contentIndex', this.index);
+    view.updatePosition(this.position);
+    view.updateContext(this.content);
+  }
+};
