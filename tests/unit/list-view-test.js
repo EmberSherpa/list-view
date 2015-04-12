@@ -1,7 +1,7 @@
 import Ember from 'ember';
 import { test } from 'ember-qunit';
 import moduleForView from '../helpers/module-for-view';
-import {compile, generateContent, sortElementsByPosition, itemPositions} from '../helpers/helpers';
+import {compile, generateContent, sortElementsByPosition, itemPositions, emptyFilter} from '../helpers/helpers';
 
 import ListView from 'ember-list-view';
 import ListItemView from 'ember-list-view/list-item-view';
@@ -660,16 +660,16 @@ test("elementWidth change", function(assert){
   positionSorted = sortElementsByPosition(this.$('.ember-list-item-view'));
 
   for(i = 0; i < 10; i++) {
-    assert.equal(Ember.$(positionSorted[i]).text(), "Item " + (i+1));
+    assert.equal(Ember.$(positionSorted[i]).text(), `Item ${i+1}`, `Item ${i+1} positioned as expected`);
   }
 
   Ember.run(function() {
     view.set('width', 100);
   });
 
-  assert.equal(this.$('.ember-list-item-view').length, 5, "The correct number of rows were rendered");
+  assert.equal(this.$('.ember-list-item-view').length, 10, "The correct number of rows were rendered");
 
-  positionSorted = sortElementsByPosition(this.$('.ember-list-item-view'));
+  positionSorted = sortElementsByPosition(this.$('.ember-list-item-view')).filter(emptyFilter);
 
   assert.deepEqual(itemPositions(view), [
     { x: 0, y: 0},
@@ -680,7 +680,7 @@ test("elementWidth change", function(assert){
   ], "The rows are in the correct positions");
 
   for(i = 0; i < 5; i++) {
-    assert.equal(Ember.$(positionSorted[i]).text(), "Item " + (i+1));
+    assert.equal(Ember.$(positionSorted[i]).text(), `Item ${i+1}`, `Item ${i+1} positioned as expected`);
   }
 
   // Test a width smaller than elementWidth, should behave the same as width === elementWidth
@@ -688,9 +688,9 @@ test("elementWidth change", function(assert){
     view.set('width', 50);
   });
 
-  assert.equal(this.$('.ember-list-item-view').length, 5, "The correct number of rows were rendered");
+  assert.equal(this.$('.ember-list-item-view').length, 10, "The correct number of rows were rendered");
 
-  positionSorted = sortElementsByPosition(this.$('.ember-list-item-view'));
+  positionSorted = sortElementsByPosition(this.$('.ember-list-item-view')).filter(emptyFilter);
 
   assert.deepEqual(itemPositions(view), [
     { x: 0, y: 0},
@@ -701,7 +701,7 @@ test("elementWidth change", function(assert){
   ], "The rows are in the correct positions");
 
   for(i = 0; i < 5; i++) {
-    assert.equal(Ember.$(positionSorted[i]).text(), "Item " + (i+1));
+    assert.equal(Ember.$(positionSorted[i]).text(), `Item ${i+1}`, `Item ${i+1} positioned as expected`);
   }
 
   assert.ok(this.$().is('.ember-list-view-list'), 'has correct list related class');
@@ -726,7 +726,7 @@ test("elementWidth change", function(assert){
     { x:100, y: 200 }], "The rows are in the correct positions");
 
   for(i = 0; i < 10; i++) {
-    assert.equal(Ember.$(positionSorted[i]).text(), "Item " + (i+1));
+    assert.equal(Ember.$(positionSorted[i]).text(), `Item ${i+1}`, `Item ${i+1} positioned as expected`);
   }
 });
 

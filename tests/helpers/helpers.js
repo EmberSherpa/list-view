@@ -83,9 +83,14 @@ function itemPositions(view) {
   }).sort(sortByPosition);
 }
 
+function emptyFilter() {
+  return Ember.$(this).text() !== '';
+}
+
 export {
   itemPositions,
   generateContent,
   sortElementsByPosition,
   extractPosition,
-  compile };
+  compile,
+  emptyFilter };
