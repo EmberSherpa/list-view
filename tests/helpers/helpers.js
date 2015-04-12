@@ -78,7 +78,7 @@ function sortByPosition (a, b) {
 }
 
 function itemPositions(view) {
-  return Ember.A(view.$('.ember-list-item-view').toArray()).map(function(e) {
+  return Ember.A(view.$('.ember-list-item-view:visible').toArray()).map(function(e) {
     return extractPosition(e);
   }).sort(sortByPosition);
 }

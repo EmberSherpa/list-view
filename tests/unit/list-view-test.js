@@ -275,6 +275,7 @@ test("should perform correct number of renders and repositions on long list init
 });
 
 test("should be programatically scrollable", function(assert) {
+  var done = assert.async();
   var content = generateContent(100),
     height = 500,
     rowHeight = 50,
@@ -293,16 +294,22 @@ test("should be programatically scrollable", function(assert) {
   });
 
   this.render();
+
+  view.$().scroll(Ember.run.bind(this, function(){
+    Ember.run.scheduleOnce('afterRender', this, function(){
+      assert.equal(this.$('.ember-list-item-view:visible').length, 11, "The correct number of rows were rendered");
+      assert.deepEqual(itemPositions(view).map(yPosition), [450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950], "The rows are in the correct positions");
+      done();
+    });
+  }));
 
   Ember.run(function() {
     view.scrollTo(475);
   });
-
-  assert.equal(this.$('.ember-list-item-view').length, 11, "The correct number of rows were rendered");
-  assert.deepEqual(itemPositions(view).map(yPosition), [450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950], "The rows are in the correct positions");
 });
 
 test("height change", function(assert){
+
   var content = generateContent(100),
     height = 500,
     rowHeight = 50,
@@ -322,29 +329,22 @@ test("height change", function(assert){
 
   this.render();
 
-  assert.equal(this.$('.ember-list-item-view').length, 11, "The correct number of rows were rendered");
+  assert.equal(this.$('.ember-list-item-view:visible').length, 11, "The correct number of rows were rendered");
   assert.deepEqual(itemPositions(view).map(yPosition), [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500], "The rows are in the correct positions");
 
   Ember.run(function() {
-    view.set('height', 100);
+    view.set('height', 600);
   });
 
-  assert.equal(this.$('.ember-list-item-view').length, 3, "The correct number of rows were rendered");
-  assert.deepEqual(itemPositions(view).map(yPosition), [0, 50, 100], "The rows are in the correct positions");
+  assert.equal(this.$('.ember-list-item-view:visible').length, 13, "Additional height receives 2 new rows.");
+  assert.deepEqual(itemPositions(view).map(yPosition), [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600], "The rows are in the correct positions");
 
-  Ember.run(function() {
-    view.set('height', 50);
-  });
+  Ember.run(function(){
+    view.set('height', 300);
+  })
 
-  assert.equal(this.$('.ember-list-item-view').length, 2, "The correct number of rows were rendered");
-  assert.deepEqual(itemPositions(view).map(yPosition), [0, 50], "The rows are in the correct positions");
-
-  Ember.run(function() {
-    view.set('height', 100);
-  });
-
-  assert.equal(this.$('.ember-list-item-view').length, 3, "The correct number of rows were rendered");
-  assert.deepEqual(itemPositions(view).map(yPosition), [0, 50, 100], "The rows are in the correct positions" );
+  assert.equal(this.$('.ember-list-item-view:visible').length, 13, "reducing height does not effect number of rendered views");
+  assert.deepEqual(itemPositions(view).map(yPosition), [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600], "The rows are in the correct positions");
 });
 
 test("adding a column, when everything is already within viewport", function(assert){
