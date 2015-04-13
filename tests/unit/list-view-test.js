@@ -9,70 +9,6 @@ import ReusableListItemView from 'ember-list-view/reusable-list-item-view';
 
 moduleForView("list-view", "unit/list-view-test.js - acceptance", {});
 
-test("should render an empty view when there is no content", function(assert) {
-  var content = generateContent(0),
-    height = 500,
-    rowHeight = 50,
-    emptyViewHeight = 170,
-    itemViewClass = ListItemView.extend({
-      template: compile("{{name}}")
-    }),
-    emptyView = Ember.View.extend({
-      attributeBindings: ['style'],
-      classNames: ['empty-view'],
-      style: 'height:' + emptyViewHeight + 'px;'
-    });
-
-  var view;
-  Ember.run(this, function(){
-    view = this.subject({
-      content: content,
-      height: height,
-      rowHeight: rowHeight,
-      itemViewClass: itemViewClass,
-      emptyView: emptyView
-    });
-  });
-
-  this.render();
-
-  assert.equal(view.get('element').style.height, "500px", "The list view height is correct");
-  assert.equal(this.$('.ember-list-container').height(), emptyViewHeight, "The scrollable view has the correct height");
-
-  assert.equal(this.$('.ember-list-item-view').length, 0, "The correct number of rows were rendered");
-  assert.equal(this.$('.empty-view').length, 1, "The empty view rendered");
-
-  Ember.run(function () {
-    view.set('content', generateContent(10));
-  });
-
-  assert.equal(view.get('element').style.height, "500px", "The list view height is correct");
-  assert.equal(this.$('.ember-list-container').height(), 500, "The scrollable view has the correct height");
-
-  assert.equal(this.$('.ember-list-item-view').length, 10, "The correct number of rows were rendered");
-  assert.equal(this.$('.empty-view').length, 0, "The empty view is removed");
-
-  Ember.run(function () {
-    view.set('content', content);
-  });
-
-  assert.equal(view.get('element').style.height, "500px", "The list view height is correct");
-  assert.equal(this.$('.ember-list-container').height(), emptyViewHeight, "The scrollable view has the correct height");
-
-  assert.equal(this.$('.ember-list-item-view').length, 0, "The correct number of rows were rendered");
-  assert.equal(this.$('.empty-view').length, 1, "The empty view rendered");
-
-  Ember.run(function () {
-    view.set('content', generateContent(10));
-  });
-
-  assert.equal(view.get('element').style.height, "500px", "The list view height is correct");
-  assert.equal(this.$('.ember-list-container').height(), 500, "The scrollable view has the correct height");
-
-  assert.equal(this.$('.ember-list-item-view').length, 10, "The correct number of rows were rendered");
-  assert.equal(this.$('.empty-view').length, 0, "The empty view has been removed");
-});
-
 test("should render a subset of the full content, based on the height, in the correct positions", function(assert) {
   var content = generateContent(100),
     height = 500,
@@ -341,7 +277,7 @@ test("height change", function(assert){
 
   Ember.run(function(){
     view.set('height', 300);
-  })
+  });
 
   assert.equal(this.$('.ember-list-item-view:visible').length, 13, "reducing height does not effect number of rendered views");
   assert.deepEqual(itemPositions(view).map(yPosition), [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600], "The rows are in the correct positions");
@@ -561,6 +497,10 @@ test("height and width change after with scroll – 1x2 -> 2x2 with 5 items", fu
 
   this.render();
 
+  view.$().scroll(Ember.run.bind(this, function(){
+    Ember.run.scheduleOnce('afterRender', this, afterRender);
+  }));
+
   assert.deepEqual(itemPositions(view), [
     { x:  0, y:    0 },
     { x:  0, y:   50 },
@@ -581,12 +521,14 @@ test("height and width change after with scroll – 1x2 -> 2x2 with 5 items", fu
   // x --|
   // x --|- viewport
   // 0
-  assert.equal(this.$('.ember-list-item-view').length, 3, "after scroll: The correct number of rows were rendered");
+  function afterRender() {
+    assert.equal(this.$('.ember-list-item-view').length, 3, "after scroll: The correct number of rows were rendered");
 
-  assert.deepEqual(itemPositions(view), [
-                  { x: 0, y: 100 },
-                  { x: 0, y: 150 },
-    /* padding */ { x: 0, y: 200 }], "after scroll: The rows are in the correct positions");
+    assert.deepEqual(itemPositions(view), [
+      { x: 0, y: 100 },
+      { x: 0, y: 150 },
+      /* padding */ { x: 0, y: 200 }], "after scroll: The rows are in the correct positions");
+  }
 
   // rotate to a with 2x2 grid visible and 8 elements
   Ember.run(function() {
